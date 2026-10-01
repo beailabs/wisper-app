@@ -35,14 +35,6 @@ struct SettingsView: View {
                     Text("Idioma del sistema").tag("")
                     ForEach(Settings.languages) { Text($0.name).tag($0.code) }
                 }
-                if settings.backend == .whisperAPI {
-                    TextField("Endpoint", text: $settings.apiEndpoint)
-                    TextField("Modelo", text: $settings.apiModel)
-                    SecureField("API key", text: $settings.apiKey)
-                    Text("OpenAI: whisper-1 · Groq: https://api.groq.com/openai/v1/audio/transcriptions con whisper-large-v3-turbo")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
 
             Section("Escritura") {

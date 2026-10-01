@@ -1,7 +1,7 @@
 import AppKit
 import AVFoundation
 
-// Modo de prueba sin micrófono: `Wisper --transcribe archivo.wav [--backend appleModern|appleLegacy|whisperAPI]`
+// Modo de prueba con un archivo de audio: `Wisper --transcribe archivo.wav [--backend appleModern|appleLegacy]`
 if let index = CommandLine.arguments.firstIndex(of: "--transcribe"), index + 1 < CommandLine.arguments.count {
     let url = URL(fileURLWithPath: CommandLine.arguments[index + 1])
     if let backendIndex = CommandLine.arguments.firstIndex(of: "--backend"),

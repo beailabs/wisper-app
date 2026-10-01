@@ -18,7 +18,6 @@ Dictado por voz para macOS al estilo Wispr Flow: **mantén pulsada `fn`, habla y
 |---|---|---|
 | Apple moderno (`SpeechAnalyzer`) | En tu Mac | Por defecto en macOS 26+. Gratis, sin internet y con puntuación. La primera vez descarga el modelo del idioma. |
 | Apple clásico (`SFSpeechRecognizer`) | En tu Mac o en Apple | Para macOS 14–15. Pide permiso de reconocimiento de voz. |
-| API Whisper | En la nube | OpenAI (`whisper-1`) o Groq (`whisper-large-v3-turbo`). Necesita API key, que se guarda en el Llavero. |
 
 ## Compilar e instalar
 
@@ -31,17 +30,13 @@ Solo hacen falta las Command Line Tools de Xcode.
 
 El script elige automáticamente un SDK compatible con tu versión de Swift.
 
-## Instalación asistida por un agente
+## Instalar Wisper con Claude Code
 
-Si estás usando un agente de programación, puedes pedirle que instale Wisper en este Mac. El agente debe comprobar primero que el sistema es macOS y que están disponibles `swiftc`, `xcrun`, `codesign` e `iconutil`. Después puede ejecutar desde la carpeta del proyecto:
+¿No sabes instalar una app desde GitHub? Si tienes Claude Code instalado en tu Mac, copia y pega este mensaje para que descargue e instale Wisper:
 
-```sh
-./scripts/build.sh --install
-```
+> Descarga e instala Wisper desde este repositorio de GitHub: https://github.com/beailabs/wisper-app. Hazlo todo por mí y explícame con palabras sencillas cualquier paso que necesite completar, como conceder los permisos de Micrófono y Accesibilidad. Antes de reemplazar una instalación existente, consúltamelo.
 
-Esto compila la app, la copia a `/Applications/Wisper.app` y la abre. El script reemplaza cualquier copia que ya exista en esa ruta; si la hay, el agente debe avisarte antes de sustituirla. La primera vez, concede a Wisper los permisos de Micrófono y Accesibilidad cuando macOS los solicite. Accesibilidad es necesaria para detectar la tecla global y escribir en otras apps.
-
-Si solo quieres compilarla sin instalarla, ejecuta `./scripts/build.sh`; la app quedará en `build/Wisper.app`.
+Wisper solo funciona en macOS. Al abrirla por primera vez, macOS te pedirá permiso para usar el micrófono y Accesibilidad; este último permite detectar la tecla de dictado y escribir el texto en otras apps.
 
 ## Primera vez
 
@@ -51,13 +46,6 @@ Si solo quieres compilarla sin instalarla, ejecuta `./scripts/build.sh`; la app 
 4. Opcional: en Ajustes de Wisper activa «Abrir Wisper al iniciar sesión».
 
 > Al recompilar, la firma de la app cambia y macOS puede pedir de nuevo el permiso de Accesibilidad. Quita Wisper de la lista y vuelve a añadirlo. Si creas un certificado de firma de código llamado `Wisper Dev` en Acceso a Llaveros, el script lo usa y los permisos se conservan.
-
-## Probar sin micrófono
-
-```sh
-say -v "Eddy (Spanish (Spain))" -o prueba.wav --data-format=LEI16@16000 "Hola, esto es una prueba"
-build/Wisper.app/Contents/MacOS/Wisper --transcribe prueba.wav --backend appleModern --language es-ES
-```
 
 ## Estructura
 
@@ -69,7 +57,7 @@ Sources/Wisper/
   DictationController.swift  Máquina de estados: pulsar → grabar → transcribir → escribir
   HotkeyMonitor.swift        Event tap global para fn / ⌘ / ⌥ / ⌃ derecha
   AudioRecorder.swift        Micrófono con AVAudioEngine y nivel para la onda
-  Transcriber.swift          Los tres motores de reconocimiento
+  Transcriber.swift          Los motores de reconocimiento de Apple
   TextInjector.swift         Pegado con ⌘V o tecleo, limpieza de texto y sonidos
   HUD.swift                  Píldora flotante con la onda de voz
   SettingsView.swift         Ventana de ajustes (SwiftUI)

@@ -20,13 +20,6 @@ enum TranscriberFactory {
             return LegacyAppleTranscriber(locale: settings.locale)
         case .appleLegacy:
             return LegacyAppleTranscriber(locale: settings.locale)
-        case .whisperAPI:
-            return WhisperAPITranscriber(
-                endpoint: settings.apiEndpoint,
-                apiKey: settings.apiKey,
-                model: settings.apiModel,
-                language: settings.language.isEmpty ? nil : String(settings.language.prefix(2))
-            )
         }
     }
 }
@@ -313,106 +306,6 @@ final class ModernAppleTranscriber: Transcriber, @unchecked Sendable {
         }
         if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
             try await request.downloadAndInstall()
-        }
-    }
-}
-
-// MARK: - API compatible con OpenAI Whisper
-
-final class WhisperAPITranscriber: Transcriber, @unchecked Sendable {
-    private let endpoint: String
-    private let apiKey: String
-    private let model: String
-    private let language: String?
-
-    private let queue = DispatchQueue(label: "wisper.api.writer")
-    private var file: AVAudioFile?
-    private var converter: AVAudioConverter?
-    private var fileURL: URL?
-
-    init(endpoint: String, apiKey: String, model: String, language: String?) {
-        self.endpoint = endpoint
-        self.apiKey = apiKey
-        self.model = model
-        self.language = language
-    }
-
-    func begin(format: AVAudioFormat) throws {
-        guard !apiKey.isEmpty else { throw WisperError.missingAPIKey }
-        guard URL(string: endpoint) != nil else { throw WisperError.invalidEndpoint }
-
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("wisper-\(UUID().uuidString).wav")
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatLinearPCM,
-            AVSampleRateKey: 16_000.0,
-            AVNumberOfChannelsKey: 1,
-            AVLinearPCMBitDepthKey: 16,
-            AVLinearPCMIsFloatKey: false,
-            AVLinearPCMIsBigEndianKey: false,
-            AVLinearPCMIsNonInterleaved: false,
-        ]
-        let file = try AVAudioFile(forWriting: url, settings: settings)
-        guard let converter = AVAudioConverter(from: format, to: file.processingFormat) else {
-            throw WisperError.recognizerUnavailable("no se puede convertir el audio a 16 kHz")
-        }
-        self.file = file
-        self.converter = converter
-        self.fileURL = url
-    }
-
-    func append(_ buffer: AVAudioPCMBuffer) {
-        queue.async { [self] in
-            guard let file, let converter else { return }
-            if let out = AudioConvert.convert(buffer, using: converter, to: file.processingFormat) {
-                try? file.write(from: out)
-            }
-        }
-    }
-
-    func finish() async throws -> String {
-        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-            queue.async {
-                self.file = nil // cierra y vuelca el archivo
-                cont.resume()
-            }
-        }
-        guard let fileURL, let url = URL(string: endpoint) else { throw WisperError.notStarted }
-        defer { try? FileManager.default.removeItem(at: fileURL) }
-
-        let audio = try Data(contentsOf: fileURL)
-        let boundary = "wisper-\(UUID().uuidString)"
-        var body = Data()
-        func field(_ name: String, _ value: String) {
-            body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".data(using: .utf8)!)
-        }
-        field("model", model)
-        field("response_format", "json")
-        if let language { field("language", language) }
-        body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"\r\nContent-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
-        body.append(audio)
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.httpBody = body
-        request.timeoutInterval = 60
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else {
-            throw WisperError.api(status, String(data: data, encoding: .utf8) ?? "")
-        }
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        return json?["text"] as? String ?? ""
-    }
-
-    func cancel() {
-        queue.async {
-            self.file = nil
-            if let url = self.fileURL { try? FileManager.default.removeItem(at: url) }
         }
     }
 }

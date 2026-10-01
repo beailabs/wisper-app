@@ -4,18 +4,12 @@ enum WisperError: LocalizedError {
     case noInputDevice
     case recognizerUnavailable(String)
     case notStarted
-    case api(Int, String)
-    case missingAPIKey
-    case invalidEndpoint
 
     var errorDescription: String? {
         switch self {
         case .noInputDevice: return "No se detecta ningún micrófono."
         case .recognizerUnavailable(let why): return "Reconocedor no disponible: \(why)"
         case .notStarted: return "La sesión de dictado no se había iniciado."
-        case .api(let status, let body): return "Error de la API (\(status)): \(body)"
-        case .missingAPIKey: return "Falta la API key. Añádela en Ajustes."
-        case .invalidEndpoint: return "El endpoint de la API no es una URL válida."
         }
     }
 }
